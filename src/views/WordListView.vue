@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { words } from '../data/words'
 import { useAppStore } from '../stores/app'
@@ -8,14 +8,26 @@ const router = useRouter()
 const store = useAppStore()
 
 const keyword = ref('')
+const visibleCount = ref(100)
+const PAGE = 60
 
 const filtered = computed(() => {
   const k = keyword.value.trim().toLowerCase()
   if (!k) return words
   return words.filter(
-    (w) => w.word.includes(k) || w.meanings.some((m) => m.includes(keyword.value.trim())),
+    (w) => w.word.toLowerCase().includes(k) || w.meanings.some((m) => m.includes(keyword.value.trim())),
   )
 })
+
+const visible = computed(() => filtered.value.slice(0, visibleCount.value))
+
+watch(keyword, () => {
+  visibleCount.value = 100
+})
+
+function loadMore() {
+  visibleCount.value += PAGE
+}
 
 function openWord(w) {
   router.push({ name: 'detail', params: { word: w.word } })
@@ -32,7 +44,7 @@ function openWord(w) {
     <input v-model="keyword" class="search" type="search" placeholder="搜索单词或中文释义…" />
 
     <div class="list">
-      <div v-for="w in filtered" :key="w.word" class="row-card" @click="openWord(w)">
+      <div v-for="w in visible" :key="w.word" class="row-card" @click="openWord(w)">
         <div class="row-left">
           <div class="row-word">{{ w.word }}</div>
           <div class="row-meaning">{{ w.meanings[0] }}</div>
@@ -43,6 +55,9 @@ function openWord(w) {
         </div>
       </div>
       <p v-if="filtered.length === 0" class="text-sub empty">没有匹配的单词</p>
+      <button v-else-if="visible.length < filtered.length" class="load-more" @click="loadMore">
+        加载更多（{{ visible.length }}/{{ filtered.length }}）
+      </button>
     </div>
   </div>
 </template>
@@ -87,6 +102,18 @@ function openWord(w) {
   border-radius: 50%;
   background: rgba(255, 107, 157, 0.08);
 }
-.mark.known { color: #4caf7d; background: rgba(76, 175, 125, 0.10); }
+.mark.known { color: #4caf7d; background: rgba(255, 255, 255, 0.1); }
 .empty { text-align: center; padding: 30px 0; }
+.load-more {
+  display: block;
+  margin: 16px auto 4px;
+  padding: 10px 22px;
+  border: 1px solid var(--block-border);
+  border-radius: 999px;
+  background: var(--block-bg);
+  color: var(--btn-to);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
 </style>
